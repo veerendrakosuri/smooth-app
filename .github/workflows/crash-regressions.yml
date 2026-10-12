@@ -1,0 +1,36 @@
+name: Validate crash regressions
+on:
+  push:
+    branches: [codex/validate-crash-fixes]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.8'
+          cache: true
+      - name: Get dependencies
+        run: ci/pub_get.sh
+      - name: Check changed-file formatting
+        run: dart format --output=none --set-exit-if-changed packages/smooth_app/lib/database/dao_product_list.dart packages/smooth_app/test/database/dao_product_list_test.dart packages/smooth_app/lib/pages/prices/product_price_add_page.dart packages/smooth_app/test/pages/prices/product_price_add_page_test.dart
+      - name: Run crash regression tests
+        working-directory: packages/smooth_app
+        run: flutter test test/database/dao_product_list_test.dart test/pages/prices/product_price_add_page_test.dart --reporter expanded
+      - name: Analyze repository
+        run: flutter analyze --fatal-infos --fatal-warnings .
+      - name: Run full test suite
+        run: ci/testing.sh
+      - name: Verify tests detect the original bugs
+        working-directory: packages/smooth_app
+        run: |
+          git show 50479cfccf9340c3736439be55bc469626458583:packages/smooth_app/lib/database/dao_product_list.dart > lib/database/dao_product_list.dart
+          git show 50479cfccf9340c3736439be55bc469626458583:packages/smooth_app/lib/pages/prices/product_price_add_page.dart > lib/pages/prices/product_price_add_page.dart
+          if flutter test test/database/dao_product_list_test.dart test/pages/prices/product_price_add_page_test.dart --reporter expanded; then
+            echo 'Regression tests unexpectedly passed without the fixes'
+            exit 1
+          fi
