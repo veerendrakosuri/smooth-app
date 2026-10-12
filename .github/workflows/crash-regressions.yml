@@ -19,15 +19,20 @@ jobs:
       - name: Check changed-file formatting
         run: dart format --output=none --set-exit-if-changed packages/smooth_app/lib/database/dao_product_list.dart packages/smooth_app/test/database/dao_product_list_test.dart packages/smooth_app/lib/pages/prices/product_price_add_page.dart packages/smooth_app/test/pages/prices/product_price_add_page_test.dart
       - name: Run crash regression tests
+        id: regressions
         working-directory: packages/smooth_app
         run: flutter test test/database/dao_product_list_test.dart test/pages/prices/product_price_add_page_test.dart --reporter expanded
       - name: Analyze repository
+        if: always() && steps.regressions.outcome == 'success'
         run: flutter analyze --fatal-infos --fatal-warnings .
       - name: Run full test suite
+        if: always() && steps.regressions.outcome == 'success'
         run: ci/testing.sh
       - name: Verify tests detect the original bugs
+        if: always() && steps.regressions.outcome == 'success'
         working-directory: packages/smooth_app
         run: |
+          git fetch --depth=1 origin 50479cfccf9340c3736439be55bc469626458583
           git show 50479cfccf9340c3736439be55bc469626458583:packages/smooth_app/lib/database/dao_product_list.dart > lib/database/dao_product_list.dart
           git show 50479cfccf9340c3736439be55bc469626458583:packages/smooth_app/lib/pages/prices/product_price_add_page.dart > lib/pages/prices/product_price_add_page.dart
           if flutter test test/database/dao_product_list_test.dart test/pages/prices/product_price_add_page_test.dart --reporter expanded; then

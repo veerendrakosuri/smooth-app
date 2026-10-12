@@ -43,7 +43,10 @@ void main() {
     await dao.put(ProductList.history());
 
     // Reproduce the truncated search key from #7788 alongside valid lists.
-    final LazyBox<dynamic> box = Hive.lazyBox<dynamic>('barcodeLists');
+    await Hive.close();
+    final LazyBox<dynamic> box = await Hive.openLazyBox<dynamic>(
+      'barcodeLists',
+    );
     final dynamic storedList = await box.get(DaoProductList.getKey(groceries));
     for (final dynamic key in <dynamic>[
       'http/searc',
@@ -53,6 +56,8 @@ void main() {
     ]) {
       await box.put(key, storedList);
     }
+    await box.close();
+    await dao.init();
   }
 
   test('lists user lists without parsing unrelated database keys', () async {
